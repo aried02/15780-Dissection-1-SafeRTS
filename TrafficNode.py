@@ -2,6 +2,7 @@
 class TrafficNode:
     # up, left, down, right, do nothing
     possible_actions = ["u", "l", "d", "r", "_"]
+    # north, south, east, west
     car_orientations = ["n", "s", "e", "w"]
     """
     Initializes new ProblemNode for Traffic problem
@@ -9,15 +10,15 @@ class TrafficNode:
     in: bunker_positions: (int*int) list, denotes (r,c) pos of bunkers
     in: bot_position: int*int, represents (r,c) position of robot/frog/thing we are moving
     in: goal_position: int*int, represnents (r,c) position of the goal
-    in: ancestors: TrafficNode list, ancestors of current node, [] if start
+    in: path_actions: char list, actions to get to current node from start, [] if start
     in: g: int, length of path so far
     """
-    def __init__(self, cars, bunker_positions, bot_position, goal_position, ancestors, height, width, g=0):
+    def __init__(self, cars, bunker_positions, bot_position, goal_position, path_actions, height, width, g=0):
         self.cars= cars
         self.bunker_positions = bunker_positions
         self.bot_position = bot_position
         self.goal_position = goal_position
-        self.ancestors = ancestors
+        self.path_actions = path_actions
         self.height = height
         self.width = width
         self.g = g
@@ -101,7 +102,7 @@ class TrafficNode:
         elif(action == "r"):
             newc = c+1
 
-        new_node = TrafficNode(new_cars, self.bunker_positions, (newr, newc), self.goal_position, self.ancestors + [self], self.height, self.width, self.g+1)
+        new_node = TrafficNode(new_cars, self.bunker_positions, (newr, newc), self.goal_position, self.path_actions + [action], self.height, self.width, self.g+1)
 
         if new_node.isDead():
             return None
@@ -115,6 +116,10 @@ class TrafficNode:
             if(res is not None):
                 succs[action] = res
         return succs
+    
+    # for caching assuming the same run, here is just pos of cars and us
+    def getHashableState(self):
+        return (tuple(self.cars), self.bot_position)
     
     def toString(self):
         # Just for easier visualization and testing
