@@ -12,7 +12,7 @@ type ProblemNode (PNode) :
   isGoal: self -> bool; Checks if current node is a goal state
   isSafe: self -> bool; Checks if current node is safe
   isDead: self -> bool; Checks if current node is a deadend (i.e. collision in traffic/must run into wall in racetrack)
-  isEqual: self * PNode -> bool; given another PNode, says whether the two are equal
+  equals: self * PNode -> bool; given another PNode, says whether the two are equal
   apply: self * action -> PNode; Gives the resulting node after an action is taken and one time step elapses
   getAllSuccessors: self -> (action: PNode) dictionary; dictionary keyed by possible actions and itemized by resulting state
 ``` 
