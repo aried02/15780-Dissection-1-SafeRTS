@@ -82,6 +82,9 @@ def lsslrta(root, bound, heuristic, priority):
         # here we would update, but nah
         target = pq.pop()
         print("Updating root, time step now: "+str(target.g))
+        # arbitrary cutoff for now, should have loop avoidance later
+        if(target.g > target.width*target.height*20):
+            return None
         # once we commit to actions, we have to reset the priority queue and
         # root from here, since we cannot "go back" time steps
         root = target
@@ -94,8 +97,8 @@ def lsslrta(root, bound, heuristic, priority):
 # 0.5 causes slightly too many dead ends, sometimes loops - 
 # I think the infinite loops are caused by being forced into a position where
 # we can stay still in a bunker forever, but cannot find a way out
-p = TrafficTest.generateStartNode(10, 10, 0.4, 0.1)
-r = lsslrta(p, 10, traffic_heuristic, traffic_priority)
+p = TrafficTest.generateStartNode(10, 10, 0.4, 0.2)
+r = lsslrta(p, 20, traffic_heuristic, traffic_priority)
 if(r is None):
     print("DEAD END: GOT STUCK")
 q = p

@@ -29,8 +29,9 @@ class TrafficNode:
     in: problem_id: int, some unique id for this "problem" aka any nodes which
         are descended from the same start setup, for caching use
     in: g: int, length of path so far
+    in: ancestors: TrafficNode list, list of nodes to get to here
     """
-    def __init__(self, cars, bunker_positions, bot_position, goal_position, path_actions, height, width, problem_id, g=0):
+    def __init__(self, cars, bunker_positions, bot_position, goal_position, path_actions, height, width, problem_id, g=0, ancestors=[]):
         # sort these to ensure hashing returns same result always
         self.cars= sorted(cars)
         self.bunker_positions = bunker_positions
@@ -41,6 +42,7 @@ class TrafficNode:
         self.width = width
         self.problem_id = problem_id
         self.g = g
+        self.ancestors = ancestors
         # initially only have comfortable true if safe
         self.comfortable = (bot_position in bunker_positions)
         if (problem_id not in car_cache):
@@ -125,7 +127,7 @@ class TrafficNode:
         # check to ensure we are not moving to a car space currently
         # (before we could "swap" with a car, which is impossible without
         # collision)
-        new_node = TrafficNode(new_cars, self.bunker_positions, (newr, newc), self.goal_position, self.path_actions + [action], self.height, self.width, self.problem_id, self.g+1)
+        new_node = TrafficNode(new_cars, self.bunker_positions, (newr, newc), self.goal_position, self.path_actions + [action], self.height, self.width, self.problem_id, self.g+1, self.ancestors + [self])
 
         if new_node.isDead() or self.collision(newr, newc):
             return None
@@ -193,10 +195,10 @@ class TrafficTest:
 
     def generateStartNode(width, height, prob_car, prob_bunker):
         cars = []
-        # even with this, could have gridlocked state
-        bunkers = [(0,0)]
         goal_pos = (height-1, width-1)
         bot_pos = (0,0)
+        # even with this, could have gridlocked start
+        bunkers = [bot_pos, goal_pos]
 
         for i in range(height):
             for j in range(width):
