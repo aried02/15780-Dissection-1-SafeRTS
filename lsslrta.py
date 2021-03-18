@@ -17,9 +17,9 @@ def traffic_priority(node):
 # update step of lsslrta*, takes in dictionary of hashableState -> (PNode, h)
 # returns dictionary with updated h values
 
-# For our purposes I do not think this step is necessary, we will never 
-# encounter an unexpected obstacle since we can model the space exactly
-
+#currently not really correct at all I don't think, and we do not take advantage
+# of the updated heuristics in lss-lrta* below anyways
+# should fix later though
 def update(d, heuristic):
     R = {}
     # newd maps things in d and frontier(d) to h values
@@ -39,9 +39,6 @@ def update(d, heuristic):
         t = min(R, key=(lambda k: newd[k]))
         t_h = newd[t]
         R.pop(t)
-        # wildly inefficient :(, no way currently to get all ancestor states
-        # shouldnt be too difficult, but some car collisions may be nondet
-        # since based on ordering in grid
         print(d)
         for k in d.keys():
             print(type(d))
