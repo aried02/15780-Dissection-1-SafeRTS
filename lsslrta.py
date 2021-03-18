@@ -91,7 +91,9 @@ def lsslrta(root, bound, heuristic, priority):
     return root
 
 
-#0.5 causes slightly too many dead ends
+# 0.5 causes slightly too many dead ends, sometimes loops - 
+# I think the infinite loops are caused by being forced into a position where
+# we can stay still in a bunker forever, but cannot find a way out
 p = TrafficTest.generateStartNode(10, 10, 0.4, 0.1)
 r = lsslrta(p, 10, traffic_heuristic, traffic_priority)
 if(r is None):
