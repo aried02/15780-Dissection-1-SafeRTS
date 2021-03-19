@@ -11,45 +11,65 @@ def traffic_heuristic(node):
     (br, bc) = node.bot_position
     return abs(gr - br) + abs(gc - bc)
 
-def traffic_priority(node):
-    return traffic_heuristic(node)+node.g
+def astar_priority(g, h):
+    return g+h
 
 # update step of lsslrta*, takes in dictionary of hashableState -> (PNode, h)
 # returns dictionary with updated h values
 
-#currently not really correct at all I don't think, and we do not take advantage
-# of the updated heuristics in lss-lrta* below anyways
-# should fix later though
-def update(d, heuristic):
+# I think this is right, not extremely efficient but not terrible
+def update(d, heuristic, frontier_list):
     R = {}
+    #frontier list is list of frontier PNodes, contain parent field
     # newd maps things in d and frontier(d) to h values
     # d will just map things from d to h values
     newd = {}
+    # really just "possible direct parents" so cost is always 1, will still
+    # propagate backwards to all ancestors
+    ancestors = {}
     for k in d.keys():
         # set all h for s in I (initial list) to infinityish
-        (pnode, _) = d[k]
+        (pnode, _, __) = d[k]
         R[k] = 0
         newd[k] = 100000
-        #find frontier nodes via successors of these and push actual h values
-        for i in pnode.getAllSuccessors().values():
-            newd[i.getHashableState()] = heuristic(i)
-            R[i.getHashableState()] = 0
+
+        # #find frontier nodes via successors of these and push actual h values
+        # for i in pnode.getAllSuccessors().values():
+        #     hstate = i.getHashableState()
+        #     if(hstate in d):
+        #         continue
+        #     newd[hstate] = heuristic(i)
+        #     if(hstate not in ancestors):
+        #         ancestors[hstate] = []
+        #     ancestors[hstate].append(pnode)
+        #     R[hstate] = 0
+    for node in frontier_list:
+        # want to find heuristic of these if not in closed already
+        hstate = node.getHashableState()
+        if(hstate not in d):
+            R[hstate] = 0
+            # h-value just original heuristic function, since not in d means
+            # not updated, in d means already accounted for
+            newd[hstate] = heuristic(node)
+            # only one level back
+            ancestors[hstate] = [node.parent]
     # now r should contain I and frontier(I)
-    while len(R) != 0:
-        t = min(R, key=(lambda k: newd[k]))
+    while len(R.keys()) != 0:
+        t = min(R.keys(), key=(lambda k: newd[k]))
         t_h = newd[t]
         R.pop(t)
-        print(d)
-        for k in d.keys():
-            print(type(d))
-            (pnode,_) = d[k]
-            succs = [i.getHashableState() for i in pnode.getAllSuccessors().values()]
-            if(t in succs):
-                # update h value, cost = 1 direct parent
-                newval = 1 + t_h
-                if(newd[k] > newval):
-                    d[k] = (d[k][0], newval)
-                    newd[k] = newval
+        if(t in ancestors):
+            t_ancestors = ancestors[t]
+        else:
+            t_ancestors = d[t][2]
+        for pnode in t_ancestors:
+            # update h value, cost = 1 direct parent
+            newval = 1 + t_h
+            k = pnode.getHashableState()
+            if(newd[k] > newval):
+                if(k in d):
+                    d[k] = (d[k][0], newval, d[k][2])
+                newd[k] = newval
     # d should have updated values for the heuristics
     return d
 
@@ -61,7 +81,9 @@ def lsslrta(root, bound, heuristic, priority):
     # closed is a dictionary mapping hashable states to h values so easy to
     # update
     pq = PriorityQueue()
-    pq.push(root, priority(root))
+    pq.push(root, priority(root.g, heuristic(root)))
+    # closed is map from hashable state to pnode*heuristic values * direct parents
+    closed = {}
     while(not root.isGoal()):
         # Lookahead, perform A* expansion for "bound" rounds
         for i in range(bound):
@@ -73,12 +95,24 @@ def lsslrta(root, bound, heuristic, priority):
                 # stop just before expanding
                 break
             node = pq.pop()
+            hstate = node.getHashableState()
+            if(hstate not in closed):
+                closed[hstate] = (node, heuristic(node), [node.parent] if node.parent is not None else [])
+            else:
+                # update parents, keep heuristic val
+                (nd, heur, p) = closed[hstate]
+                newparents = p + [node.parent] if node.parent is not None else p
+                closed[hstate] = (nd, heur, p+[node.parent])
             # push on all successors to open set
             for succ in node.getAllSuccessors().values():
-                pq.push(succ, priority(succ))
-        # here we would update, but nah
+                # figure out heuristic value for this state
+                (_, heur, __) = closed.get(succ.getHashableState(), (None, heuristic(succ), None))
+                pq.push(succ, priority(succ.g, heur))
+        # do update for all states in closed of heuristic value
+        closed = update(closed, heuristic, map(lambda x: x[1], pq.elements))
+        # find and set new root
         target = pq.pop()
-        print("Updating root, time step now: "+str(target.g))
+        print(target.g)
         # arbitrary cutoff for now, should have loop avoidance later
         if(target.g > target.width*target.height*20):
             return None
@@ -86,7 +120,8 @@ def lsslrta(root, bound, heuristic, priority):
         # root from here, since we cannot "go back" time steps
         root = target
         pq = PriorityQueue()
-        pq.push(target, priority(target))
+        (_, heur, __) = closed.get(target.getHashableState(), (None, heuristic(target), None)) 
+        pq.push(target, priority(target.g, heuristic(target)))
 
     return root
 
@@ -94,17 +129,23 @@ def lsslrta(root, bound, heuristic, priority):
 # 0.5 causes slightly too many dead ends, sometimes loops - 
 # I think the infinite loops are caused by being forced into a position where
 # we can stay still in a bunker forever, but cannot find a way out
-p = TrafficTest.generateStartNode(10, 10, 0.4, 0.2)
-r = lsslrta(p, 20, traffic_heuristic, traffic_priority)
+p = TrafficTest.generateStartNode(20, 20, 0.4, 0.1)
+print(p.toString())
+i = 1
+print("running with expansion budget of "+str(i*10))
+r = lsslrta(p, i*10, traffic_heuristic, astar_priority)
 if(r is None):
     print("DEAD END: GOT STUCK")
+print(len(r.path_actions))
 q = p
+import time
 print("Initial")
 print(q.toString())
 for action in r.path_actions:
     q = q.apply(action)
     print(action)
     print(q.toString())
+    time.sleep(0.5)
 
 
 

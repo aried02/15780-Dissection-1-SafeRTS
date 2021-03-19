@@ -31,7 +31,7 @@ class TrafficNode:
     in: g: int, length of path so far
     in: ancestors: TrafficNode list, list of nodes to get to here
     """
-    def __init__(self, cars, bunker_positions, bot_position, goal_position, path_actions, height, width, problem_id, g=0, ancestors=[]):
+    def __init__(self, cars, bunker_positions, bot_position, goal_position, path_actions, height, width, problem_id, g=0, ancestors=[], parent=None):
         # sort these to ensure hashing returns same result always
         self.cars= sorted(cars)
         self.bunker_positions = bunker_positions
@@ -43,6 +43,7 @@ class TrafficNode:
         self.problem_id = problem_id
         self.g = g
         self.ancestors = ancestors
+        self.parent = parent
         # initially only have comfortable true if safe
         self.comfortable = (bot_position in bunker_positions)
         if (problem_id not in car_cache):
@@ -127,7 +128,7 @@ class TrafficNode:
         # check to ensure we are not moving to a car space currently
         # (before we could "swap" with a car, which is impossible without
         # collision)
-        new_node = TrafficNode(new_cars, self.bunker_positions, (newr, newc), self.goal_position, self.path_actions + [action], self.height, self.width, self.problem_id, self.g+1, self.ancestors + [self])
+        new_node = TrafficNode(new_cars, self.bunker_positions, (newr, newc), self.goal_position, self.path_actions + [action], self.height, self.width, self.problem_id, self.g+1, self.ancestors + [self], self)
 
         if new_node.isDead() or self.collision(newr, newc):
             return None
