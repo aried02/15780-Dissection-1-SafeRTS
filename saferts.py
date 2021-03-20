@@ -81,7 +81,7 @@ def d_safe_search(start, C, expand, action_space, safety_eval, b=10):
     
     d_safe_search_frontier = PriorityQueue()
     d_safe = safety_eval(start)
-    d_safe_search_frontier.put((d_safe,k,start))
+    d_safe_search_frontier.put((d_safe,start))
     
     N_exp = 0
     while N_exp < b and (not d_safe_search_frontier.empty()):
