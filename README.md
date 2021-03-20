@@ -7,8 +7,8 @@ Interface for Problems, idea is to represent them as individual nodes with funct
 type ProblemNode (PNode) :
   type action; Represents all actions that can be taken at a given time
   public var comfortable: bool; can be used to cache comfort of this node when found comfortable in safeRTS
-  public var parent: PNode; represents the parent of the current node, set on creation
-  public var costFromStart: int; keeps track of cost of path so far for ASTAR, set on creation
+  public var ancestors: PNode list; represents all ancestors of the current node, set on creation
+  public var g: int; keeps track of cost of path so far for ASTAR, set on creation
   isGoal: self -> bool; Checks if current node is a goal state
   isSafe: self -> bool; Checks if current node is safe
   isDead: self -> bool; Checks if current node is a deadend (i.e. collision in traffic/must run into wall in racetrack)
