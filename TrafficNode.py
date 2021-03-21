@@ -48,7 +48,8 @@ class TrafficNode:
         if (problem_id not in car_cache):
             car_cache[problem_id] = {}
         # automatically caches on creation
-        car_cache[problem_id][g] = cars
+        if (g not in car_cache[problem_id]):
+            car_cache[problem_id][g] = cars
     
     def isGoal(self):
         return self.bot_position == self.goal_position

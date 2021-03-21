@@ -268,7 +268,7 @@ def safeRTS(s_root, B, heuristic, priority, safety_eval):
         s_root = s_target
         print("Current G is: "+str(s_root.g))
         # arbitrary cutoff, ideally shouldnt be neededd but /shrug
-        if(s_root.g > s_root.height*s_root.width):
+        if(s_root.g > s_root.height*s_root.width*4):
             print("TIMEOUT")
             return None
         # print(s_root.toString())
@@ -290,11 +290,11 @@ succ_lsslrta = 0
 total_path_length_lss = 0
 total_path_length_safe = 0
 n = 5
-B = 1000
+B = 100
 # In case takes too long, wrapped in try-catch to still print overall stats
 try:
     for i in range(n):
-        p = TrafficTest.generateStartNode(40, 40, 0.4, 0.1)
+        p = TrafficTest.generateStartNode(20, 20, 0.4, 0.1)
         from copy import deepcopy
         from lsslrta import lsslrta_other
         q = deepcopy(p)
@@ -326,6 +326,10 @@ try:
                 if(r2.isGoal()):
                     succ_lsslrta += 1
                     total_path_length_lss += len(r2.path_actions)
+    print("Total successful saferts: "+str(succ_safe))
+    print("Path length average: "+str(total_path_length_safe/n))
+    print("Total successful lsslrta: "+str(succ_lsslrta))
+    print("Path length average: "+str(total_path_length_lss/n))
         
 except:
     print("Total successful saferts: "+str(succ_safe))
