@@ -238,6 +238,7 @@ def safeRTS(s_root, B, heuristic, priority, safety_eval):
             _, best = frontier.get()
             # search predecessors from closest to farthest for a SAFE node
             if(best.isSafe()):
+                # best is safe, just use that as target (will occur when going to goal)
                 found_s = True
                 s_safe = best
             else:
@@ -267,7 +268,7 @@ def safeRTS(s_root, B, heuristic, priority, safety_eval):
         s_root = s_target
         print("Current G is: "+str(s_root.g))
         # arbitrary cutoff, ideally shouldnt be neededd but /shrug
-        if(s_root.g > s_root.height*s_root.width*2):
+        if(s_root.g > s_root.height*s_root.width):
             print("TIMEOUT")
             return None
         # print(s_root.toString())
@@ -288,33 +289,46 @@ succ_safe = 0
 succ_lsslrta = 0
 total_path_length_lss = 0
 total_path_length_safe = 0
-n = 15
-for i in range(n):
-    p = TrafficTest.generateStartNode(20, 20, 0.4, 0.1)
-    from copy import deepcopy
-    from lsslrta import lsslrta_other
-    q = deepcopy(p)
-    B = 100
-    print(p.toString())
-    r = safeRTS(p, B, traffic_heuristic, astar_priority, traffic_safety_eval)
-    if(r is not None):
-        print("SAFERTS")
-        print(r.toString())
-        print(len(r.path_actions))
+n = 5
+B = 1000
+# In case takes too long, wrapped in try-catch to still print overall stats
+try:
+    for i in range(n):
+        p = TrafficTest.generateStartNode(40, 40, 0.4, 0.1)
+        from copy import deepcopy
+        from lsslrta import lsslrta_other
+        q = deepcopy(p)
+        print(p.toString())
+        r = safeRTS(p, B, traffic_heuristic, astar_priority, traffic_safety_eval)
+        if(r is not None):
+            print("SAFERTS")
+            print(r.toString())
+            print(len(r.path_actions))
 
-        if(r.isGoal()):
-            succ_safe+=1
-            total_path_length_safe += len(r.path_actions)
-   
-        r2 = lsslrta_other(q, 10, traffic_heuristic, astar_priority)
-        if(r2 is not None):
-            print("LSSLRTA*")
-            print(len(r2.path_actions))
-            if(r2.isGoal()):
-                succ_lsslrta += 1
-                total_path_length_lss += len(r2.path_actions)
-
-print("Total successful saferts: "+str(succ_safe))
-print("Path length average: "+str(total_path_length_safe/n))
-print("Total successful lsslrta: "+str(succ_lsslrta))
-print("Path length average: "+str(total_path_length_lss/n))
+            if(r.isGoal()):
+                succ_safe+=1
+                total_path_length_safe += len(r.path_actions)
+                # Uncomment for animation
+                # blah = p
+                # import time
+                # print("Initial")
+                # print(blah.toString())
+                # for action in r.path_actions:
+                #     blah = blah.apply(action)
+                #     print(action)
+                #     print(blah.toString())
+                #     time.sleep(0.5)
+    
+            r2 = lsslrta_other(q, 10, traffic_heuristic, astar_priority)
+            if(r2 is not None):
+                print("LSSLRTA*")
+                print(len(r2.path_actions))
+                if(r2.isGoal()):
+                    succ_lsslrta += 1
+                    total_path_length_lss += len(r2.path_actions)
+        
+except:
+    print("Total successful saferts: "+str(succ_safe))
+    print("Path length average: "+str(total_path_length_safe/n))
+    print("Total successful lsslrta: "+str(succ_lsslrta))
+    print("Path length average: "+str(total_path_length_lss/n))
