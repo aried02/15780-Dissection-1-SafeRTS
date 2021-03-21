@@ -21,8 +21,8 @@ class TrafficNode:
     car_orientations = ["n", "s", "e", "w"]
     """
     Initializes new ProblemNode for Traffic problem
-    in: cars: (int*int*char) list, denotes (r, c, orientation) r,c row col position of car (from top left 0,0), orientation (n/s/e/w)
-    in: bunker_positions: (int*int) list, denotes (r,c) pos of bunkers
+    in: cars: (int*int*char) set, denotes (r, c, orientation) r,c row col position of car (from top left 0,0), orientation (n/s/e/w)
+    in: bunker_positions: (int*int) set, denotes (r,c) pos of bunkers
     in: bot_position: int*int, represents (r,c) position of robot/frog/thing we are moving
     in: goal_position: int*int, represnents (r,c) position of the goal
     in: path_actions: char list, actions to get to current node from start, [] if start
@@ -32,8 +32,7 @@ class TrafficNode:
     in: ancestors: TrafficNode list, list of nodes to get to here
     """
     def __init__(self, cars, bunker_positions, bot_position, goal_position, path_actions, height, width, problem_id, g=0, ancestors=[], parent=None):
-        # sort these to ensure hashing returns same result always
-        self.cars= sorted(cars)
+        self.cars= cars
         self.bunker_positions = bunker_positions
         self.bot_position = bot_position
         self.goal_position = goal_position
@@ -85,7 +84,7 @@ class TrafficNode:
     def advance(self):
         if(self.g+1 in car_cache[self.problem_id]):
             return car_cache[self.problem_id][self.g + 1]
-        new_cars = []
+        new_cars = set()
         for (r, c, orient) in self.cars:
             (newr, newc, neworient) = (r,c,orient)
             if(orient == "n"):
@@ -102,9 +101,9 @@ class TrafficNode:
                     newr = r
                     newc = c
             # add new car to new_cars
-            new_cars.append((newr,newc,neworient))
+            new_cars.add((newr,newc,neworient))
         # sort so same order through list every time
-        return sorted(new_cars)
+        return new_cars
                 
 
     # returns TrafficNode yielded by taking the given action, or None if the
@@ -143,18 +142,7 @@ class TrafficNode:
                 succs[action] = res
         return succs
 
-    def getAllPossiblePreviousStates(self):
-        # returns all STATES - aka g*(bot_pos) - that could yield this node
-        if(self.g == 0):
-            return []
-        oldg = self.g - 1
-        # assuming we dont somehow go 2 time steps should be cached
-        old_cars = car_cache[self.problem_id][oldg]
-        (r, c) = self.bot_position
-        bot_pos_changes = [(-1, 0), (0, -1), (1, 0), (0, 1), (0,0)]
-        return [(oldg, (r+i[0], c+i[1])) for i in bot_pos_changes if 
-                not self.collision(r+i[0], c+i[1], old_cars)]
-    
+
     # needed for putting this into a priority queue (I think to break priority
     # based ties), paper says to break ties based on lower h, which means higher
     # g since priority = h+g
@@ -169,7 +157,7 @@ class TrafficNode:
     def toString(self):
         # Just for easier visualization and testing
         grid = [["e" for i in range(self.width)] for j in range(self.height)]
-        for (r,c, orient) in self.cars:
+        for (r,c,orient) in self.cars:
             if(orient == "n"):
                 grid[r][c] = "^"
             elif(orient == "s"):
@@ -195,18 +183,18 @@ class TrafficTest:
     current_id = 0
 
     def generateStartNode(width, height, prob_car, prob_bunker):
-        cars = []
+        cars = set()
         goal_pos = (height-1, width-1)
         bot_pos = (0,0)
         # even with this, could have gridlocked start
-        bunkers = [bot_pos, goal_pos]
+        bunkers = set([bot_pos, goal_pos])
 
         for i in range(height):
             for j in range(width):
                 if(i == 0 and j == 0):
                     continue
                 if(np.random.random() <= prob_bunker):
-                    bunkers.append((i,j))
+                    bunkers.add((i,j))
                 elif(np.random.random() <= prob_car):
                     a = np.random.random()
                     if (a <= 0.25):
@@ -217,7 +205,7 @@ class TrafficTest:
                         orient = "e"
                     else:
                         orient = "w"
-                    cars.append((i,j, orient))
+                    cars.add((i,j, orient))
         start_node = TrafficNode(cars, bunkers, bot_pos, goal_pos, [], height, width, TrafficTest.current_id)
         TrafficTest.current_id += 1
         return start_node

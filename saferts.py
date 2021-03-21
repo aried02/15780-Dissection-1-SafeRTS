@@ -124,18 +124,19 @@ def d_safe_search(start, C, safety_eval, priority, heuristic, b=10):
     return 2*b, C
     
 def update(d, heuristic, frontier):
-    R = {}
+    R = PriorityQueue()
     #frontier list is list of frontier PNodes, contain parent field
     # newd maps things in d and frontier(d) to h values
     # d will just map things from d to h values
     newd = {}
+    visited = set()
     # really just "possible direct parents" so cost is always 1, will still
     # propagate backwards to all ancestors
     ancestors = {}
     for k in d.keys():
         # set all h for s in I (initial list) to infinityish
-        R[k] = 0
         newd[k] = 100000
+        R.put((newd[k], k))
 
         # #find frontier nodes via successors of these and push actual h values
         # for i in pnode.getAllSuccessors().values():
@@ -158,17 +159,21 @@ def update(d, heuristic, frontier):
         # want to find heuristic of these if not in closed already
         hstate = node.getHashableState()
         if(hstate not in d):
-            R[hstate] = 0
             # h-value just original heuristic function, since not in d means
             # not updated, in d means already accounted for
             newd[hstate] = heuristic(node)
+            R.put((newd[hstate], hstate))
             # only one level back
             ancestors[hstate] = [node.parent]
     # now r should contain I and frontier(I)
-    while len(R.keys()) != 0:
-        t = min(R.keys(), key=(lambda k: newd[k]))
-        t_h = newd[t]
-        R.pop(t)
+    while not R.empty():
+        t_h, t = R.get()
+        if(t_h == 100000):
+            # all heuristic values should already have been reset, break
+            break
+        if(t in visited):
+            continue
+        visited.add(t)
         if(t in ancestors):
             t_ancestors = ancestors[t]
         else:
@@ -181,6 +186,7 @@ def update(d, heuristic, frontier):
                 if(k in d):
                     d[k] = (d[k][0], newval, d[k][2])
                 newd[k] = newval
+                R.put((newval, k))
     # d should have updated values for the heuristics
     return d
 
@@ -230,15 +236,14 @@ def safeRTS(s_root, B, heuristic, priority, safety_eval):
         # predecessor of a best node
         while(not found_s and not frontier.empty()):
             _, best = frontier.get()
-            # search predecessors from closest to farthest for a comfortable
-            # node (if closest is comfortable, all previous are too)
-            if(best.comfortable):
+            # search predecessors from closest to farthest for a SAFE node
+            if(best.isSafe()):
                 found_s = True
                 s_safe = best
             else:
                 for i in range(len(best.ancestors)-1, -1, -1):
                     pred = best.ancestors[i]
-                    if(pred.comfortable and pred.g > s_root.g):
+                    if(pred.isSafe() and pred.g > s_root.g):
                         found_s = True
                         s_safe = pred
                         break
@@ -261,7 +266,11 @@ def safeRTS(s_root, B, heuristic, priority, safety_eval):
         # set root equal to target (aka "move along path from root to target")
         s_root = s_target
         print("Current G is: "+str(s_root.g))
-        print(s_root.toString())
+        # arbitrary cutoff, ideally shouldnt be neededd but /shrug
+        if(s_root.g > s_root.height*s_root.width*2):
+            print("TIMEOUT")
+            return None
+        # print(s_root.toString())
     if(s_root.isGoal()):
         return s_root
     else:
@@ -275,15 +284,37 @@ def traffic_safety_eval(node):
         if(dist < min_dist):
             dist = min_dist
     return min_dist
+succ_safe = 0
+succ_lsslrta = 0
+total_path_length_lss = 0
+total_path_length_safe = 0
+n = 15
+for i in range(n):
+    p = TrafficTest.generateStartNode(20, 20, 0.4, 0.1)
+    from copy import deepcopy
+    from lsslrta import lsslrta_other
+    q = deepcopy(p)
+    B = 100
+    print(p.toString())
+    r = safeRTS(p, B, traffic_heuristic, astar_priority, traffic_safety_eval)
+    if(r is not None):
+        print("SAFERTS")
+        print(r.toString())
+        print(len(r.path_actions))
 
-p = TrafficTest.generateStartNode(10, 10, 0.4, 0.1)
-from copy import deepcopy
-from lsslrta import lsslrta_other
-q = deepcopy(p)
-B = 100
-print(p.toString())
-r = safeRTS(p, B, traffic_heuristic, astar_priority, traffic_safety_eval)
-print(r.toString())
-r2 = lsslrta_other(q, 10, traffic_heuristic, astar_priority)
-print(len(r.path_actions))
-print(len(r2.path_actions))
+        if(r.isGoal()):
+            succ_safe+=1
+            total_path_length_safe += len(r.path_actions)
+   
+        r2 = lsslrta_other(q, 10, traffic_heuristic, astar_priority)
+        if(r2 is not None):
+            print("LSSLRTA*")
+            print(len(r2.path_actions))
+            if(r2.isGoal()):
+                succ_lsslrta += 1
+                total_path_length_lss += len(r2.path_actions)
+
+print("Total successful saferts: "+str(succ_safe))
+print("Path length average: "+str(total_path_length_safe/n))
+print("Total successful lsslrta: "+str(succ_lsslrta))
+print("Path length average: "+str(total_path_length_lss/n))

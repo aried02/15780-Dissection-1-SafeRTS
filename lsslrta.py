@@ -20,19 +20,19 @@ def astar_priority(g, h):
 
 # I think this is right, not extremely efficient but not terrible
 def update(d, heuristic, frontier):
-    R = {}
+    R = PriorityQueue()
     #frontier list is list of frontier PNodes, contain parent field
     # newd maps things in d and frontier(d) to h values
     # d will just map things from d to h values
     newd = {}
+    visited = set()
     # really just "possible direct parents" so cost is always 1, will still
     # propagate backwards to all ancestors
     ancestors = {}
     for k in d.keys():
         # set all h for s in I (initial list) to infinityish
-        (pnode, _, __) = d[k]
-        R[k] = 0
         newd[k] = 100000
+        R.put((newd[k], k))
 
         # #find frontier nodes via successors of these and push actual h values
         # for i in pnode.getAllSuccessors().values():
@@ -55,17 +55,21 @@ def update(d, heuristic, frontier):
         # want to find heuristic of these if not in closed already
         hstate = node.getHashableState()
         if(hstate not in d):
-            R[hstate] = 0
             # h-value just original heuristic function, since not in d means
             # not updated, in d means already accounted for
             newd[hstate] = heuristic(node)
+            R.put((newd[hstate], hstate))
             # only one level back
             ancestors[hstate] = [node.parent]
     # now r should contain I and frontier(I)
-    while len(R.keys()) != 0:
-        t = min(R.keys(), key=(lambda k: newd[k]))
-        t_h = newd[t]
-        R.pop(t)
+    while not R.empty():
+        t_h, t = R.get()
+        if(t_h == 100000):
+            # all heuristic values should already have been reset, break
+            break
+        if(t in visited):
+            continue
+        visited.add(t)
         if(t in ancestors):
             t_ancestors = ancestors[t]
         else:
@@ -78,6 +82,7 @@ def update(d, heuristic, frontier):
                 if(k in d):
                     d[k] = (d[k][0], newval, d[k][2])
                 newd[k] = newval
+                R.put((newval, k))
     # d should have updated values for the heuristics
     return d
 
@@ -229,7 +234,7 @@ def lsslrta_other(root, bound, heuristic, priority):
         target = frontier.get()[1]
         print("Current target time: "+str(target.g))
         # arbitrary cutoff for now, should have loop avoidance later
-        if(target.g > target.width*target.height*10):
+        if(target.g > target.width*target.height*2):
             return None
         # once we commit to actions, we have to reset the priority queue and
         # root from here, since we cannot "go back" time steps
